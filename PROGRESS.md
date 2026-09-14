@@ -1,7 +1,8 @@
 # PROGRESS
 
-Status: v1.0.0, complete and verified on this machine. Nothing is published. The owner ships
-it from the phone.
+Status: v1.0.0, released on GitHub at https://github.com/Booyaka101/manyhands, tagged `v1.0.0`
+with the wheel and sdist attached. Not on PyPI. That upload is the owner's call, because a
+version number published there can never be withdrawn or reused.
 
 ## Verified working
 
@@ -51,6 +52,13 @@ Every claim here was run, not reasoned about.
   long Linux `tmp_path` split `does not exist` across two lines with box art in between. The
   `output()` helper in `tests/test_cli.py` now strips the box characters and collapses
   whitespace, so assertions test wording rather than layout.
+- **And colour-dependent, which only the real runner showed.** The first push to GitHub went
+  red on both ubuntu cells and green on both windows ones. On a GitHub runner rich decides the
+  stream has colour, so the panel borders come through as SGR escape pairs rather than box
+  glyphs, and stripping the glyphs alone left `does \x1b[31m\x1b[0m not exist`. Neither the
+  local run nor either docker image reproduced it, because rich saw no colour in those.
+  `FORCE_COLOR=1 pytest -q` reproduces it and is the way to check this class of failure
+  without waiting on CI. `output()` now strips ANSI escapes as well.
 
 ## Review pass, and what it changed
 
@@ -117,7 +125,7 @@ page is summarised, so the HTML index and the JSON cannot drift the way finding 
   dropped for the rest of the run so it cannot charge for every page.
 - **The README image and the churro issue link are absolute GitHub URLs** pointing at
   `Booyaka101/manyhands` on `main`. PyPI does not rewrite relative links, so they would render
-  broken on the project page. They resolve once the repo is pushed under that name.
+  broken on the project page. The repo is now public under that name, so they resolve.
 
 ## Not built for v1, and why
 
@@ -149,8 +157,10 @@ page is summarised, so the HTML index and the JSON cannot drift the way finding 
 
 ## Single best first distribution step
 
-PyPI, then one post. Publish the wheel and sdist in `dist/` with `twine upload`, because every
-other route needs an install command that works. Then one write-up in r/LocalLLaMA that leads
+PyPI, then one post. The GitHub release carries the wheel and sdist, but `pip install
+manyhands` still fails, and every other route needs an install command that works. Publish
+`dist/` with `twine upload`. Install twine into a throwaway venv, not this project's: it wants
+`rich>=14.3.3` and churro-ocr pins `rich<14`, so installing it here breaks the runtime. Then one write-up in r/LocalLLaMA that leads
 with the measured numbers including the bad ones: 48.0% capture on typescript, an 82% flag rate
 on cursive, and dots.ocr contributing nothing on a 24 GB card. That audience has the GPUs to
 reproduce it and no patience for a launch post that quotes only the 79.3%. Read 10-20 recent
