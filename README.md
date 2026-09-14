@@ -113,6 +113,7 @@ Useful options:
 | `--page-timeout S` | stop a model after S seconds on one page and keep what it read. Default 600 |
 | `--no-cache` | re-transcribe pages that are already in the cache |
 | `--no-glossary` | ignore confirmed readings for this run |
+| `--json FILE` | write a folder-level summary: slots, flags and the report path per page |
 
 Every transcript is cached under `<folder>/.manyhands/transcripts/<model>/` as it lands,
 and a page already in the cache is not read again. A run killed on page 80 of 200 picks up
@@ -156,34 +157,40 @@ It takes the same `--models`, `--backends`, `--page-timeout` and `--no-cache` op
 | `--limit N` | score only the first N pages |
 | `--out DIR` | also write the page reports and an index there |
 | `--json FILE` | write the scores as JSON |
+| `--target-capture F` | the capture the `[met]` line is judged against, default 0.70 |
+| `--target-flag F` | the flag rate the `[met]` line is judged against, default 0.20 |
 
 Two datasets, both published through HTR-United, both scored with the default five models on
 an RTX 4090. Neither is bundled here; clone
 [dataset-celestine-doniau-danest](https://github.com/HTR-United/dataset-celestine-doniau-danest)
 and [tapuscorpus](https://github.com/HTR-United/tapuscorpus) if you want to reproduce these.
-The per-model progress lines are cut from both blocks, everything else is what the command
-printed.
+The model loading and per-page progress lines are cut from the blocks, everything else is what
+the command printed.
 
 #### 1914 French cursive, four pages
 
 ```
 $ manyhands eval datasets/celestine-doniau-danest/data --per-page
-  10c3fa40-d683-4703-8bc4-94b48936ce85.jpg: capture 86%, flag 91%, CER 11.6%
-  7f841dee-0d18-4eef-9966-f13cc9f4589c.jpg: capture 87%, flag 79%, CER 11.3%
-  9ee628b4-e868-4236-a2bf-cd563acda597.jpg: capture 81%, flag 76%, CER 10.2%
+  10c3fa40-d683-4703-8bc4-94b48936ce85.jpg: capture 88%, flag 91%, CER 15.0%
+  7f841dee-0d18-4eef-9966-f13cc9f4589c.jpg: capture 87%, flag 79%, CER 12.3%
+  9ee628b4-e868-4236-a2bf-cd563acda597.jpg: capture 81%, flag 76%, CER 12.1%
   e1c22fc0-d84b-4d17-96fb-e3269b4d048d.jpg: capture 0%, flag 40%, CER 8.3%
+
 page                                slots  flagged   flag%  capture%    CER%
 ----------------------------------------------------------------------------
-10c3fa40-d683-4703-8bc4-94b48936c     690      627   90.9%     86.5%   11.6%
-7f841dee-0d18-4eef-9966-f13cc9f45     402      316   78.6%     86.6%   11.3%
-9ee628b4-e868-4236-a2bf-cd563acda     669      511   76.4%     80.8%   10.2%
+10c3fa40-d683-4703-8bc4-94b48936c     690      627   90.9%     87.8%   15.0%
+7f841dee-0d18-4eef-9966-f13cc9f45     402      316   78.6%     86.7%   12.3%
+9ee628b4-e868-4236-a2bf-cd563acda     669      511   76.4%     81.1%   12.1%
 e1c22fc0-d84b-4d17-96fb-e3269b4d0      15        6   40.0%      0.0%    8.3%
+
 pages scored          4
 slots                 1776
 flagged slots         1460
-error-capture rate    84.1%  (923 of 1098 wrong characters sit in a flagged word)
+
+error-capture rate    84.8%  (1105 of 1303 wrong characters sit in a flagged word)
 flag rate             82.2%  (1460 of 1776 words highlighted for review)
-consensus CER         11.0%
+consensus CER         13.2%
+
 target                capture >= 70%, flag rate < 20%  [not met]
 ```
 
@@ -195,21 +202,25 @@ folder. tapuscorpus is much larger. Four pages is what 80 minutes of GPU time bu
 ```
 $ manyhands eval datasets/tapus-jardin --per-page
   16_7e494_default.jpg: capture 99%, flag 75%, CER 1311.1%
-  18_9f102_default.jpg: capture 63%, flag 22%, CER 5.6%
+  18_9f102_default.jpg: capture 61%, flag 22%, CER 12.9%
   20_21abf_default.jpg: capture 54%, flag 25%, CER 23.2%
-  22_c266f_default.jpg: capture 21%, flag 20%, CER 7.3%
+  22_c266f_default.jpg: capture 42%, flag 20%, CER 33.3%
+
 page                                slots  flagged   flag%  capture%    CER%
 ----------------------------------------------------------------------------
 16_7e494_default.jpg                   20       15   75.0%     99.1% 1311.1%
-18_9f102_default.jpg                  129       28   21.7%     62.9%    5.6%
+18_9f102_default.jpg                  129       28   21.7%     61.4%   12.9%
 20_21abf_default.jpg                  129       32   24.8%     54.4%   23.2%
-22_c266f_default.jpg                  177       35   19.8%     20.5%    7.3%
+22_c266f_default.jpg                  177       35   19.8%     41.9%   33.3%
+
 pages scored          4
 slots                 455
 flagged slots         110
-error-capture rate    87.3%  (1080 of 1237 wrong characters sit in a flagged word)
+
+error-capture rate    79.3%  (1243 of 1568 wrong characters sit in a flagged word)
 flag rate             24.2%  (110 of 455 words highlighted for review)
-consensus CER         50.9%
+consensus CER         63.9%
+
 target                capture >= 70%, flag rate < 20%  [not met]
 ```
 
@@ -218,8 +229,8 @@ target                capture >= 70%, flag rate < 20%  [not met]
 The bar is catching at least 70% of the wrong characters while highlighting under 20% of the
 words. Neither dataset clears it, and they miss in opposite directions.
 
-On the cursive the consensus is wrong about one character in nine, and the models disagree
-about four words in five. Capture is genuinely 84%: re-read only the highlighted words and you
+On the cursive the consensus is wrong about one character in eight, and the models disagree
+about four words in five. Capture is genuinely 85%: re-read only the highlighted words and you
 see five errors in six. But at an 82% flag rate you are re-reading nearly the whole page. On a
 hand this hard manyhands orders your attention, it does not save you the reading. The fourth
 page scoring 0% capture is fifteen words long with six wrong characters in them, which is
@@ -227,29 +238,56 @@ sample size, not signal.
 
 The typescript inverts it. Flag rate falls to about a fifth of the words, which is the number
 you want, and capture falls with it. Ignore the title page, discussed next, and the other three
-come to 46.6% capture (129 of 277 wrong characters) at a 21.8% flag rate. Half the errors are in
-words all five models agreed on, because on clean print the models are good enough to make the
-same mistakes. Agreement is evidence only when the voters are independent, and easy material
-makes them less so.
+come to 48.0% capture (292 of 608 wrong characters) at a 21.8% flag rate, over a 24.8% CER.
+Half the errors are in words all five models agreed on, because on clean print the models are
+good enough to make the same mistakes. Agreement is evidence only when the voters are
+independent, and easy material makes them less so.
 
 `16_7e494_default.jpg` and its 1311% CER is a ground-truth coverage artefact, not a transcription
 failure. That page is a title page. The ALTO transcribes the seven-line title block and nothing
 else, 72 characters, while the models read the whole page: the margin numbers `85 89 97 164 53`
 and a long decorative rule of dashes. So 1013 consensus characters are scored against 72 of truth
-and almost everything counts as an error. Those 960 characters are 78% of the dataset's error
-total, and since they sit in flagged words they are what lifts the headline capture to 87.3%.
+and almost everything counts as an error. Those 960 characters are 61% of the dataset's error
+total, and since they sit in flagged words they are what lifts the headline capture to 79.3%.
 Quote the per-page rows, not that number.
 
 Fewer models is worse on both axes except capture. The same cursive dataset with three backends
 instead of five:
 
+```
+$ manyhands eval datasets/celestine-doniau-danest/data --per-page --backends olmocr,paddle,mineru
+  10c3fa40-d683-4703-8bc4-94b48936ce85.jpg: capture 92%, flag 91%, CER 17.4%
+  7f841dee-0d18-4eef-9966-f13cc9f4589c.jpg: capture 90%, flag 77%, CER 15.6%
+  9ee628b4-e868-4236-a2bf-cd563acda597.jpg: capture 90%, flag 96%, CER 16.0%
+  e1c22fc0-d84b-4d17-96fb-e3269b4d048d.jpg: capture 0%, flag 40%, CER 8.3%
+
+page                                slots  flagged   flag%  capture%    CER%
+----------------------------------------------------------------------------
+10c3fa40-d683-4703-8bc4-94b48936c     684      620   90.6%     92.2%   17.4%
+7f841dee-0d18-4eef-9966-f13cc9f45     387      299   77.3%     89.9%   15.6%
+9ee628b4-e868-4236-a2bf-cd563acda    1835     1765   96.2%     90.0%   16.0%
+e1c22fc0-d84b-4d17-96fb-e3269b4d0      15        6   40.0%      0.0%    8.3%
+
+pages scored          4
+slots                 2921
+flagged slots         2690
+
+error-capture rate    90.5%  (1465 of 1618 wrong characters sit in a flagged word)
+flag rate             92.1%  (2690 of 2921 words highlighted for review)
+consensus CER         16.4%
+
+target                capture >= 70%, flag rate < 20%  [not met]
+```
+
 | backends | capture | flag rate | consensus CER |
 | --- | --- | --- | --- |
-| olmOCR-2, PaddleOCR-VL, MinerU2.5 | 90.2% | 92.1% | 16.0% |
-| the default five | 84.1% | 82.2% | 11.0% |
+| olmOCR-2, PaddleOCR-VL, MinerU2.5 | 90.5% | 92.1% | 16.4% |
+| the default five | 84.8% | 82.2% | 13.2% |
 
 Capture rises because the flags cover nearly everything, which is not a win. The transcript gets
-worse and there is more of the page to re-read.
+worse and there is more of the page to re-read. Page `9ee628b4` shows where the extra 1166 slots
+come from: MinerU2.5 returns 1725 tokens for that page against about 600 from every other model,
+and with only three voters that run of repeated text survives into the consensus.
 
 So: run it when the material is hard enough that models disagree usefully and your alternative
 is reading every word yourself. On clean print, a single good model plus a spellchecker will
@@ -269,8 +307,9 @@ a twenty-token gap. When a gap has no anchors left it falls back to pairwise ali
 against the longest stream, which is where null tokens appear.
 
 **Vote.** `vote.py` groups each column's readings by normalised key, takes the majority, and
-records the agreement ratio. Ties break by backend rank, then by a glossary hit, then
-alphabetically, and the winner is marked `contested` in `agreement.json`.
+records the agreement ratio. A tie goes to a reading the glossary already confirms, and
+otherwise to the best-ranked backend holding it. The winner is marked `contested` in
+`agreement.json`.
 
 **Locate.** The models return text, not coordinates. `layout.py` finds the line bands itself:
 Otsu threshold, a horizontal ink projection, a dense core per line grown out over its
@@ -315,7 +354,7 @@ inclusive.
 
 ## Configuration
 
-Default ensemble, in rank order. Rank breaks ties.
+Default ensemble, in rank order. Rank breaks a tie the glossary does not.
 
 | alias | model | params | weights |
 | --- | --- | --- | --- |
@@ -412,6 +451,10 @@ is flagged `blank`. It does not emit whatever one model hallucinated.
 **Every model failed.** `manyhands run` exits 3 rather than reporting a clean page with zero
 flags.
 
+**One model listed twice.** `--backends olmocr,allenai/olmOCR-2-7B-1025` names one model two
+ways. It votes once, and the run says so on stderr. A model cannot corroborate itself, and
+counting it twice would report a lone reading as agreed.
+
 ## Limitations
 
 - **Agreement is agreement, not accuracy.** Models that share a base model can be confidently
@@ -471,8 +514,8 @@ here runs and is covered by tests. What is thin is the evidence: eight scored pa
 documents, one hand each, on one GPU. Nothing here has met a hand it was not developed against.
 
 Distribution plan, such as it is. PyPI first, because every other step needs an install command
-that works. Then one write-up in r/LocalLLaMA led with the numbers above, the 46.6% capture on
-typescript included, since a post that only quotes 87.3% would be the exact overclaim this tool
+that works. Then one write-up in r/LocalLLaMA led with the numbers above, the 48.0% capture on
+typescript included, since a post that only quotes 79.3% would be the exact overclaim this tool
 exists to argue against.
 
 ## Non-goals

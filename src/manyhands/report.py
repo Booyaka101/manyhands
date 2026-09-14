@@ -15,7 +15,7 @@ from markupsafe import Markup
 from PIL import Image, UnidentifiedImageError
 
 from manyhands import __version__
-from manyhands.vote import Slot
+from manyhands.vote import Slot, group_by_line
 
 if TYPE_CHECKING:  # pragma: no cover - import cycle only matters to type checkers
     from manyhands.pipeline import PageResult
@@ -94,9 +94,9 @@ def _neighbours(stem: str, siblings: Sequence[str]) -> tuple[str | None, str | N
     return (stems[at - 1] if at else None), (stems[at + 1] if at + 1 < len(stems) else None)
 
 
-def render_index(results: Sequence[PageResult]) -> str:
-    """Render the folder-level index that links to every page report."""
-    rows = [
+def page_rows(results: Sequence[PageResult]) -> list[dict[str, Any]]:
+    """Summarise each page for the folder index and for ``run --json``."""
+    return [
         {
             "page": result.name,
             "stem": result.stem,
@@ -108,6 +108,11 @@ def render_index(results: Sequence[PageResult]) -> str:
         }
         for result in results
     ]
+
+
+def render_index(results: Sequence[PageResult]) -> str:
+    """Render the folder-level index that links to every page report."""
+    rows = page_rows(results)
     total_slots = sum(row["slots"] for row in rows)
     total_flagged = sum(row["flagged"] for row in rows)
     return _environment().get_template("index.html.j2").render(
@@ -121,28 +126,36 @@ def render_index(results: Sequence[PageResult]) -> str:
 
 
 def _group_lines(slots: Sequence[Slot]) -> list[dict[str, Any]]:
-    grouped: dict[int, list[Slot]] = {}
-    for slot in slots:
-        grouped.setdefault(slot.line, []).append(slot)
-    return [
-        {
-            "line": line,
-            "slots": [
-                {
-                    "i": slot.index,
-                    # U+2205 would be the honest glyph but Georgia has no empty set, so it tofus.
-                    "text": slot.consensus or "·",
-                    "band": slot.band,
-                    "agreement": slot.agreement,
-                    "confirmed": slot.confirmed,
-                    "contested": slot.contested,
-                    "empty": not slot.consensus,
-                }
-                for slot in grouped[line]
-            ],
-        }
-        for line in sorted(grouped)
-    ]
+    """Build the display lines, numbered to match consensus.txt.
+
+    A line every backend left empty is shown, because a disagreement resolved to nothing
+    is still a disagreement, but it is not written to consensus.txt and so has no number.
+    """
+    lines: list[dict[str, Any]] = []
+    numbered = 0
+    for group in group_by_line(slots):
+        written = any(slot.consensus for slot in group)
+        numbered += written
+        lines.append(
+            {
+                "number": numbered if written else None,
+                "slots": [
+                    {
+                        "i": slot.index,
+                        # U+2205 would be the honest glyph but Georgia has no empty set,
+                        # so it tofus.
+                        "text": slot.consensus or "·",
+                        "band": slot.band,
+                        "agreement": slot.agreement,
+                        "confirmed": slot.confirmed,
+                        "contested": slot.contested,
+                        "empty": not slot.consensus,
+                    }
+                    for slot in group
+                ],
+            }
+        )
+    return lines
 
 
 def _slot_data(slots: Sequence[Slot], backends: Sequence[str]) -> dict[str, Any]:

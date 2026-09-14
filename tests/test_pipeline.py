@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import shutil
+from pathlib import Path
 
 import pytest
 from PIL import Image
@@ -19,6 +20,7 @@ from manyhands.pipeline import (
     discover_pages,
     rasterise_pdf,
     run_folder,
+    run_payload,
     transcribe_pages,
     vote_page,
     write_page,
@@ -126,6 +128,22 @@ def test_the_workspace_index_points_at_the_reports(run):
     for result in results:
         assert index[result.stem]["page"] == result.name
         assert (folder / "manyhands-out" / result.stem).samefile(index[result.stem]["out_dir"])
+
+
+def test_the_run_summary_totals_match_the_pages_it_lists(run):
+    folder, results = run
+    payload = run_payload(results, folder / "manyhands-out")
+
+    assert payload["slots"] == sum(len(result.ballot.slots) for result in results)
+    assert payload["flagged"] == sum(result.flagged for result in results)
+    assert payload["flag_rate"] == round(payload["flagged"] / payload["slots"], 4)
+
+
+def test_a_run_that_found_no_pages_summarises_as_zero_rather_than_dividing_by_it():
+    payload = run_payload([], Path("out"))
+
+    assert payload["pages"] == []
+    assert payload["flag_rate"] == 0.0
 
 
 def test_a_rerun_from_the_cache_reproduces_the_same_consensus(run):

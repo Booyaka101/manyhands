@@ -15,8 +15,11 @@ from manyhands.evaluate import (
     format_pages,
     format_report,
     load_ground_truth,
+    mismatched_image,
     score_page,
 )
+from manyhands.text import fold
+from manyhands.vote import Ballot, Slot, render_consensus
 
 TRUTH = DATA / "groundtruth"
 LINE_ONE = "Buried this day John Fenwick of the parish"
@@ -214,3 +217,48 @@ def test_the_per_page_table_has_a_row_per_page():
 
     assert table.splitlines()[0].startswith("page")
     assert len(table.splitlines()) == 4
+
+
+def test_the_scored_text_is_the_consensus_file_character_for_character():
+    """eval used to break a line wherever the line index changed, so a page whose slots
+    came back out of line order was scored against text no artifact ever held."""
+    slots = [
+        Slot(index=i, consensus=text, agreement=agreement, votes={}, readings={}, line=line)
+        for i, (text, line, agreement) in enumerate(
+            [("alpha", 0, 1.0), ("beta", 1, 1.0), ("gamma", 0, 0.5), ("", 1, 0.4)]
+        )
+    ]
+    ballot = Ballot(slots=slots)
+
+    scored, spans = consensus_spans(ballot)
+
+    assert scored == fold(render_consensus(ballot))
+    assert scored == "alpha gamma\nbeta"
+    assert spans == [(0, 5, False), (6, 11, True), (12, 16, False), (16, 16, True)]
+
+
+def test_ground_truth_naming_another_page_is_a_warning_not_a_silent_score():
+    truth = GroundTruth(lines=["a line"], image="scans/register-p099.jpg", schema="alto")
+
+    warning = mismatched_image(DATA / "pages" / "journal-p001.jpg", truth)
+
+    assert warning is not None
+    assert "journal-p001.jpg" in warning
+    assert "register-p099.jpg" in warning
+
+
+@pytest.mark.parametrize(
+    "named",
+    ["journal-p001.jpg", "journal-p001.JPG", "scans/journal-p001.tif", r"D:\scans\journal-p001.png"],
+)
+def test_a_consistent_pair_raises_no_warning(named):
+    truth = GroundTruth(lines=["a line"], image=named, schema="page")
+
+    assert mismatched_image(DATA / "pages" / "journal-p001.jpg", truth) is None
+
+
+def test_ground_truth_that_names_nothing_raises_no_warning():
+    truth = GroundTruth(lines=["a line"], image=None, schema="page")
+
+    assert mismatched_image(DATA / "pages" / "journal-p001.jpg", truth) is None
+

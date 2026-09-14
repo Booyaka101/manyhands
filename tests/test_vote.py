@@ -9,7 +9,7 @@ import pytest
 from conftest import FENWICK_LINE, stream, vote
 from manyhands.align import align
 from manyhands.text import Token
-from manyhands.vote import Slot, render_consensus, tally, variant_key
+from manyhands.vote import Ballot, Slot, group_by_line, render_consensus, tally, variant_key
 
 FIVE = ["model-a", "model-b", "model-c", "model-d", "model-e"]
 
@@ -192,3 +192,49 @@ def test_the_winners_include_a_backend_that_spelled_the_winning_word_differently
 
     assert slot.winners == ["a", "b"]
     assert slot.agreement == pytest.approx(2 / 3)
+
+
+def test_a_reading_the_human_already_accepted_wins_a_tie_over_backend_order():
+    """A 1-1 tie used to go to whichever backend was listed first, glossary or not."""
+    streams = [stream("Renwick"), stream("Fenwick")]
+
+    plain = vote(streams, ["model-a", "model-b"])
+    informed = vote(streams, ["model-a", "model-b"], glossary={"fenwick|fenwicke": "Fenwick"})
+
+    assert plain.slots[0].consensus == "Renwick"
+    assert informed.slots[0].consensus == "Fenwick"
+    assert informed.slots[0].contested is True
+    assert informed.slots[0].confirmed is False
+
+
+def test_backend_rank_still_decides_a_tie_nobody_has_confirmed():
+    streams = [stream("Renwick"), stream("Fenwick")]
+
+    assert vote(streams, ["model-a", "model-b"]).slots[0].consensus == "Renwick"
+    assert vote(streams, ["model-b", "model-a"]).slots[0].consensus == "Renwick"
+
+
+def test_group_by_line_puts_a_slot_back_with_its_line():
+    """Alignment can hand back a line index that steps backwards; grouping repairs it."""
+    slots = [
+        Slot(index=i, consensus=text, agreement=1.0, votes={}, readings={}, line=line)
+        for i, (text, line) in enumerate([("alpha", 0), ("beta", 1), ("gamma", 0)])
+    ]
+
+    grouped = group_by_line(slots)
+
+    assert [[slot.consensus for slot in line] for line in grouped] == [
+        ["alpha", "gamma"],
+        ["beta"],
+    ]
+    assert render_consensus(Ballot(slots=slots)) == "alpha gamma\nbeta"
+
+
+def test_a_line_the_vote_emptied_is_left_out_of_the_consensus_text():
+    slots = [
+        Slot(index=0, consensus="alpha", agreement=1.0, votes={}, readings={}, line=0),
+        Slot(index=1, consensus="", agreement=0.4, votes={}, readings={}, line=1),
+    ]
+
+    assert render_consensus(Ballot(slots=slots)) == "alpha"
+

@@ -109,7 +109,7 @@
   <div class="layout">
     <div class="text">
       {% for entry in lines %}
-      <span class="ln" data-n="{{ entry.line + 1 }}">
+      <span class="ln" data-n="{{ entry.number if entry.number else '' }}">
         {%- for slot in entry.slots %}
         <span class="w {{ slot.band }}{{ ' empty' if slot.empty }}{{ ' confirmed' if slot.confirmed }}"
               {% if slot.band != 'ok' %}data-slot="{{ slot.i }}" tabindex="0" role="button"

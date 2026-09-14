@@ -460,3 +460,30 @@ def test_the_deadline_is_a_transformers_stopping_criterion_restarted_per_page():
 
 def test_no_timeout_leaves_generation_alone():
     assert OCRRunner("fake/model", timeout=None)._generation_kwargs() == {}
+
+
+def test_an_alias_and_its_full_id_resolve_to_one_voter(tmp_path):
+    """Two names for one model used to load it twice and let it corroborate itself."""
+    resolved, problems = resolve_backends(
+        ["olmocr", "allenai/olmOCR-2-7B-1025", "nanonets"], tmp_path
+    )
+
+    assert [backend.model_id for backend in resolved] == [
+        "allenai/olmOCR-2-7B-1025",
+        "nanonets/Nanonets-OCR2-3B",
+    ]
+    assert len(problems) == 1
+    assert "'allenai/olmOCR-2-7B-1025' is allenai/olmOCR-2-7B-1025" in problems[0]
+    assert "'olmocr' already covers" in problems[0]
+
+
+def test_the_same_cached_backend_named_twice_resolves_once(tmp_path):
+    directory = cache_dir(tmp_path, "stub-a")
+    directory.mkdir(parents=True)
+    (directory / "p001.json").write_text('{"backend": "stub-a", "lines": ["a"]}', encoding="utf-8")
+
+    resolved, problems = resolve_backends(["stub-a", "stub-a"], tmp_path)
+
+    assert [backend.model_id for backend in resolved] == ["stub-a"]
+    assert len(problems) == 1
+

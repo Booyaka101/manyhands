@@ -13,15 +13,19 @@ import xml.etree.ElementTree as ET
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from difflib import SequenceMatcher
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 from typing import Any
 
 from manyhands.pipeline import IMAGE_SUFFIXES
 from manyhands.text import fold, levenshtein
-from manyhands.vote import Ballot
+from manyhands.vote import Ballot, group_by_line
 
 ALTO_NAMESPACE_HINT = "alto"
 PAGE_NAMESPACE_HINT = "pagecontent"
+
+#: The bar the brief set: catch most of the real errors without flagging most of the page.
+TARGET_CAPTURE = 0.70
+TARGET_FLAG = 0.20
 
 _WHITESPACE = re.compile(r"[ \t]+")
 
@@ -233,26 +237,30 @@ def consensus_spans(ballot: Ballot) -> tuple[str, list[tuple[int, int, bool]]]:
     A slot the backends disagreed about but left empty still gets a span, a zero-width
     one, because the report highlights it and a reviewer would look there.
 
+    The text this returns is ``consensus.txt`` folded, character for character, so the
+    score describes the file the run actually shipped.
+
     :returns: The consensus text, and one ``(start, end, flagged)`` per slot with a place
         in the text.
     """
     pieces: list[str] = []
     spans: list[tuple[int, int, bool]] = []
     cursor = 0
-    current_line: int | None = None
-    for slot in ballot.slots:
-        if not slot.consensus:
-            if slot.flagged:
-                spans.append((cursor, cursor, True))
-            continue
-        if current_line is not None:
-            pieces.append("\n" if slot.line != current_line else " ")
-            cursor += 1
-        current_line = slot.line
-        text = fold(slot.consensus)
-        pieces.append(text)
-        spans.append((cursor, cursor + len(text), slot.flagged))
-        cursor += len(text)
+    for line in group_by_line(ballot.slots):
+        started = False
+        for slot in line:
+            if not slot.consensus:
+                if slot.flagged:
+                    spans.append((cursor, cursor, True))
+                continue
+            separator = " " if started else ("\n" if pieces else "")
+            pieces.append(separator)
+            cursor += len(separator)
+            started = True
+            text = fold(slot.consensus)
+            pieces.append(text)
+            spans.append((cursor, cursor + len(text), slot.flagged))
+            cursor += len(text)
     return "".join(pieces), spans
 
 
@@ -306,6 +314,26 @@ def score_page(page: str, ballot: Ballot, truth: GroundTruth) -> PageScore:
     )
 
 
+def mismatched_image(image_path: Path, truth: GroundTruth) -> str | None:
+    """Return a warning when a ground-truth file names a page other than the one it was paired with.
+
+    Pairing is by file stem, so a dataset that renamed its images without rewriting the
+    XML scores a real transcript against the wrong page and reports it as error.
+
+    :returns: The warning, or ``None`` when the pair is consistent or the XML names nothing.
+    """
+    if not truth.image:
+        return None
+    # PureWindowsPath so a path written with either separator yields the same file name.
+    named = PureWindowsPath(truth.image).name
+    if PureWindowsPath(named).stem.casefold() == image_path.stem.casefold():
+        return None
+    return (
+        f"{image_path.name} is paired with ground truth that names {named}. "
+        "Pairing is by file stem, so this scores against a different page."
+    )
+
+
 def find_pairs(dataset: Path) -> list[tuple[Path, Path]]:
     """Match page images to their ground-truth XML by file stem, recursively.
 
@@ -339,7 +367,12 @@ def find_pairs(dataset: Path) -> list[tuple[Path, Path]]:
     return pairs
 
 
-def format_report(score: DatasetScore, *, target_capture: float = 0.70, target_flag: float = 0.20) -> str:
+def format_report(
+    score: DatasetScore,
+    *,
+    target_capture: float = TARGET_CAPTURE,
+    target_flag: float = TARGET_FLAG,
+) -> str:
     """Format the dataset score as the block ``manyhands eval`` prints."""
     lines = [
         f"pages scored          {len(score.pages)}",
@@ -353,16 +386,31 @@ def format_report(score: DatasetScore, *, target_capture: float = 0.70, target_f
         f"consensus CER         {score.cer:.1%}",
         "",
         f"target                capture >= {target_capture:.0%}, flag rate < {target_flag:.0%}  "
-        f"[{'met' if score.capture_rate >= target_capture and score.flag_rate < target_flag else 'not met'}]",
+        f"[{'met' if meets_target(score, target_capture, target_flag) else 'not met'}]",
     ]
     return "\n".join(lines)
 
 
-def score_payload(score: DatasetScore, dataset: Path, backends: Sequence[str]) -> dict[str, Any]:
+def meets_target(score: DatasetScore, target_capture: float, target_flag: float) -> bool:
+    """Return True when a dataset score clears both halves of the target."""
+    return score.capture_rate >= target_capture and score.flag_rate < target_flag
+
+
+def score_payload(
+    score: DatasetScore,
+    dataset: Path,
+    backends: Sequence[str],
+    *,
+    target_capture: float = TARGET_CAPTURE,
+    target_flag: float = TARGET_FLAG,
+) -> dict[str, Any]:
     """Build the document ``manyhands eval --json`` writes."""
     return {
         "dataset": str(dataset),
         "backends": list(backends),
+        "target_capture": target_capture,
+        "target_flag": target_flag,
+        "met": meets_target(score, target_capture, target_flag),
         "capture_rate": round(score.capture_rate, 4),
         "flag_rate": round(score.flag_rate, 4),
         "cer": round(score.cer, 4),

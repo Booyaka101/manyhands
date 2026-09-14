@@ -22,6 +22,8 @@ from manyhands.backends import (
     resolve_model,
 )
 from manyhands.evaluate import (
+    TARGET_CAPTURE,
+    TARGET_FLAG,
     DatasetScore,
     GroundTruth,
     GroundTruthError,
@@ -29,6 +31,7 @@ from manyhands.evaluate import (
     format_pages,
     format_report,
     load_ground_truth,
+    mismatched_image,
     score_page,
     score_payload,
 )
@@ -37,6 +40,7 @@ from manyhands.pipeline import (
     PageResult,
     PipelineError,
     run_folder,
+    run_payload,
     transcribe_pages,
     vote_page,
     write_folder_index,
@@ -64,6 +68,8 @@ BACKENDS_HELP = (
 )
 NO_CACHE_HELP = "Ignore stored transcripts and re-run every model."
 TIMEOUT_HELP = "Seconds a model may spend generating one page, 0 for no limit."
+TARGET_CAPTURE_HELP = "Share of wrong characters the flags must catch to pass."
+TARGET_FLAG_HELP = "Share of words the flags must stay under to pass."
 
 
 def _use_utf8_output() -> None:
@@ -80,6 +86,10 @@ def _use_utf8_output() -> None:
 
 def _err(message: str) -> None:
     typer.secho(message, err=True, fg=typer.colors.RED)
+
+
+def _warn(message: str) -> None:
+    typer.secho(f"warning: {message}", err=True, fg=typer.colors.YELLOW)
 
 
 def _fail(message: str, code: int = 2) -> typer.Exit:
@@ -164,6 +174,9 @@ def run(
         float,
         typer.Option("--page-timeout", min=0, help=TIMEOUT_HELP),
     ] = PAGE_TIMEOUT,
+    json_out: Annotated[
+        Path | None, typer.Option("--json", help="Write a folder-level summary of the run as JSON.")
+    ] = None,
 ) -> None:
     """Transcribe every page in FOLDER with several models and report where they differ."""
     workspace = folder / WORKSPACE_DIRNAME
@@ -218,6 +231,13 @@ def run(
         bold=True,
     )
     typer.echo(f"reports: {out_root / 'index.html'}")
+    if json_out is not None:
+        payload = run_payload(results, out_root)
+        json_out.parent.mkdir(parents=True, exist_ok=True)
+        json_out.write_text(
+            json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+        )
+        typer.echo(f"summary: {json_out}")
 
 
 @app.command()
@@ -401,6 +421,13 @@ def evaluate_command(
     page_timeout: Annotated[
         float, typer.Option("--page-timeout", min=0, help=TIMEOUT_HELP)
     ] = PAGE_TIMEOUT,
+    target_capture: Annotated[
+        float,
+        typer.Option("--target-capture", min=0, max=1, help=TARGET_CAPTURE_HELP),
+    ] = TARGET_CAPTURE,
+    target_flag: Annotated[
+        float, typer.Option("--target-flag", min=0, max=1, help=TARGET_FLAG_HELP)
+    ] = TARGET_FLAG,
 ) -> None:
     """Score the flags against ALTO/PAGE-XML ground truth: error capture and flag rate."""
     workspace = dataset / WORKSPACE_DIRNAME
@@ -431,6 +458,9 @@ def evaluate_command(
         if not truth.lines:
             _err(f"{xml_path.name} has no transcribed lines; skipped.")
             continue
+        warning = mismatched_image(image_path, truth)
+        if warning is not None:
+            _warn(warning)
         truths[image_path] = truth
 
     scored_pages = [(path.name, path) for path in truths]
@@ -472,10 +502,16 @@ def evaluate_command(
     if per_page:
         typer.echo(format_pages(score.pages))
         typer.echo("")
-    typer.echo(format_report(score))
+    typer.echo(format_report(score, target_capture=target_capture, target_flag=target_flag))
 
     if json_out is not None:
-        payload = score_payload(score, dataset, [backend.model_id for backend in resolved])
+        payload = score_payload(
+            score,
+            dataset,
+            [backend.model_id for backend in resolved],
+            target_capture=target_capture,
+            target_flag=target_flag,
+        )
         json_out.parent.mkdir(parents=True, exist_ok=True)
         json_out.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         typer.echo(f"\nscores: {json_out}")

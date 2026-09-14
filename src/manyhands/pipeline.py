@@ -22,7 +22,7 @@ from manyhands.backends import (
 )
 from manyhands.layout import detect_bands, place_slots
 from manyhands.text import plural
-from manyhands.vote import Ballot, Slot, render_consensus, tally
+from manyhands.vote import Ballot, Slot, group_by_line, render_consensus, tally
 
 IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp", ".webp"}
 PDF_SUFFIXES = {".pdf"}
@@ -285,10 +285,7 @@ def _locate_slots(slots: list[Slot], image_path: Path, *, image: Image.Image | N
     if not bands:
         return
 
-    by_line: dict[int, list[Slot]] = {}
-    for slot in slots:
-        by_line.setdefault(slot.line, []).append(slot)
-    ordered = [by_line[line] for line in sorted(by_line)]
+    ordered = group_by_line(slots)
     placed = place_slots([[slot.consensus or " " for slot in line] for line in ordered], bands)
     for line, boxes in zip(ordered, placed, strict=True):
         for slot, box in zip(line, boxes, strict=True):
@@ -322,6 +319,30 @@ def agreement_payload(result: PageResult) -> dict[str, Any]:
         "timings": {
             transcript.backend: round(transcript.seconds, 3) for transcript in result.transcripts
         },
+    }
+
+
+def run_payload(results: Sequence[PageResult], out_root: Path) -> dict[str, Any]:
+    """Build the folder-level summary of a run, for ``--json``.
+
+    Per-page detail stays in each page's ``agreement.json``; this is the level a caller
+    scripting over a whole folder needs, so it carries the path to each of those files.
+    """
+    rows = report.page_rows(results)
+    by_stem = {result.stem: result for result in results}
+    for row in rows:
+        out_dir = by_stem[row["stem"]].out_dir
+        row["out_dir"] = str(out_dir) if out_dir else None
+        row["flag_rate"] = round(row["flag_rate"], 4)
+    slots = sum(row["slots"] for row in rows)
+    flagged = sum(row["flagged"] for row in rows)
+    return {
+        "out": str(out_root),
+        "index": str(out_root / "index.html"),
+        "pages": rows,
+        "slots": slots,
+        "flagged": flagged,
+        "flag_rate": round(flagged / slots, 4) if slots else 0.0,
     }
 
 

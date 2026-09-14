@@ -13,11 +13,18 @@ First release.
 - `manyhands confirm <page>` records accepted readings into `.manyhands/glossary.json`,
   filed by the competing readings so one decision settles every later page that repeats it.
 - `manyhands eval <dataset-dir>` scores flags against ALTO or PAGE-XML ground truth and
-  reports error-capture rate, flag rate and CER.
+  reports error-capture rate, flag rate and CER against a target set by `--target-capture`
+  and `--target-flag`. It scores the consensus text the run would write, character for
+  character, and warns when a ground-truth file names a page other than the one its stem
+  paired it with.
 - Five permissively-licensed default models, driven through churro-ocr. `stanford-oval/churro-3B`
   is opt-in and prints its licence notice.
 - Anchor-based progressive alignment with null tokens, majority voting with agreement ratios,
-  and tie-breaking by backend rank then glossary.
+  and ties broken by a reading the glossary already confirms, then by backend rank.
+- A model named twice, once by alias and once by id, votes once and the run says so. A model
+  cannot corroborate itself.
+- `--json` on `run` writes a folder-level summary, slots and flags per page with the path to
+  each page's `agreement.json`, for anyone scripting over the output.
 - Per-page transcript cache, so an interrupted run resumes and a re-report costs no GPU time.
 - Backends that crash, loop, return nothing, or return a wildly different amount of text are
   kept out of the vote and named in the report footer rather than failing the page. One that

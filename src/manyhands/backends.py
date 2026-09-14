@@ -579,6 +579,10 @@ def resolve_backends(
     already transcribed is the pipeline's job, so a half-finished cache resumes instead
     of pinning the backend to the pages it happens to hold.
 
+    Two names for one model resolve once. ``--backends olmocr,allenai/olmOCR-2-7B-1025``
+    is one model, and letting it vote twice would report its reading as corroborated when
+    nothing corroborated it.
+
     :param names: Backend names or aliases as typed by the user.
     :param workspace: The ``.manyhands`` workspace holding the transcript cache.
     :param allow_cached: Set False to refuse cached transcripts and force real inference.
@@ -587,16 +591,26 @@ def resolve_backends(
     """
     resolved: list[BackendLike] = []
     problems: list[str] = []
+    seen: dict[str, str] = {}
     for name in names:
         cleaned = name.strip()
         if not cleaned:
             continue
         model_id = resolve_model(cleaned)
+        first = seen.get(model_id)
+        if first is not None:
+            problems.append(
+                f"{cleaned!r} is {model_id}, which {first!r} already covers; "
+                "it votes once. A model cannot corroborate itself."
+            )
+            continue
         if "/" in model_id:
+            seen[model_id] = cleaned
             resolved.append(OCRRunner(model_id, timeout=timeout))
             continue
         cached = cache_dir(workspace, cleaned)
         if allow_cached and cached.is_dir() and any(cached.glob("*.json")):
+            seen[model_id] = cleaned
             resolved.append(CachedBackend(cleaned, cached))
             continue
         problems.append(

@@ -92,7 +92,8 @@ def tally(
     """Vote every column of an aligned lattice.
 
     :param columns: Aligned columns produced by :func:`manyhands.align.align`.
-    :param backends: Backend names in rank order; earlier names win ties.
+    :param backends: Backend names in rank order, one per stream and all distinct;
+        earlier names win ties.
     :param glossary: Normalised variant key to the reading a human accepted for it.
     :returns: The voted page.
     """
@@ -174,12 +175,15 @@ def _break_tie(
     groups: dict[str, list[tuple[int, Token | None]]],
     accepted: dict[str, str],
 ) -> str:
-    """Break a tie by best backend rank, then by glossary hit, then alphabetically."""
+    """Break a tie by glossary hit, then by best backend rank.
+
+    The brief asked for rank first. Rank cannot tie: a backend sits in exactly one group,
+    so the best rank in each group is unique and deciding on it first makes the glossary
+    term unreachable. A reading a human has already accepted somewhere in this corpus is
+    better evidence than the order the models happen to be listed in, so it goes first.
+    """
     confirmed = set(accepted.values())
-    return min(
-        leaders,
-        key=lambda reading: (groups[reading][0][0], 0 if reading in confirmed else 1, reading),
-    )
+    return min(leaders, key=lambda reading: (reading not in confirmed, groups[reading][0][0]))
 
 
 def _consensus_line(
@@ -205,12 +209,24 @@ def variant_key(counts: Counter[str]) -> str:
     return "|".join(sorted({normalise(reading) for reading in counts if reading}))
 
 
+def group_by_line(slots: Sequence[Slot]) -> list[list[Slot]]:
+    """Group slots into consensus lines, in line order.
+
+    A slot's line index can step backwards from its neighbour's, because the line comes
+    from whichever backends won the slot and they do not all break the page in the same
+    place. The report, ``consensus.txt`` and the eval score have to resolve that the same
+    way or they describe different text.
+    """
+    grouped: dict[int, list[Slot]] = {}
+    for slot in slots:
+        grouped.setdefault(slot.line, []).append(slot)
+    return [grouped[line] for line in sorted(grouped)]
+
+
 def render_consensus(ballot: Ballot) -> str:
     """Render the consensus text of a ballot, one line per consensus line index."""
-    lines: dict[int, list[str]] = {}
-    for slot in ballot.slots:
-        if slot.consensus:
-            lines.setdefault(slot.line, []).append(slot.consensus)
-    if not lines:
-        return ""
-    return "\n".join(" ".join(lines[index]) for index in sorted(lines))
+    lines = [
+        " ".join(slot.consensus for slot in line if slot.consensus)
+        for line in group_by_line(ballot.slots)
+    ]
+    return "\n".join(line for line in lines if line)

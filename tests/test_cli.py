@@ -6,6 +6,7 @@ import json
 import os
 import subprocess
 import sys
+from pathlib import Path
 
 import pytest
 from typer.testing import CliRunner
@@ -254,6 +255,21 @@ def test_confirm_is_not_interactive_without_a_terminal(page_folder):
     assert "--slot N --reading TEXT" in output(result)
 
 
+def test_run_json_summarises_the_folder_and_points_at_each_page(page_folder, tmp_path):
+    """agreement.json is per page. Scripting over a folder needs the level above it."""
+    summary = tmp_path / "run.json"
+    result = invoke("run", page_folder, "--backends", STUBS, "--json", summary)
+    payload = json.loads(summary.read_text(encoding="utf-8"))
+
+    assert result.exit_code == 0
+    assert f"summary: {summary}" in output(result)
+    assert payload["slots"] == sum(page["slots"] for page in payload["pages"])
+    assert payload["flagged"] == sum(page["flagged"] for page in payload["pages"])
+    assert [page["page"] for page in payload["pages"]] == ["p001.jpg"]
+    assert Path(payload["pages"][0]["out_dir"], "agreement.json").is_file()
+    assert Path(payload["index"]).is_file()
+
+
 def test_eval_scores_a_dataset_and_writes_json(tmp_path):
     dataset = tmp_path / "dataset"
     dataset.mkdir()
@@ -374,3 +390,57 @@ def test_quitting_the_review_stops_without_writing_the_rest(page_folder, monkeyp
     assert result.exit_code == 0
     assert "1 reading written" in result.output
     assert len(glossary["entries"]) == 1
+
+
+def test_one_model_named_twice_cannot_corroborate_itself(page_folder):
+    """stub-a reads Fenwick alone. Listed twice it used to make the slot unanimous."""
+    result = invoke("run", page_folder, "--backends", "stub-a,stub-a,stub-b")
+    payload = json.loads(
+        (page_folder / "manyhands-out" / "p001" / "agreement.json").read_text(encoding="utf-8")
+    )
+    surname = next(slot for slot in payload["slots"] if slot["consensus"] in {"Fenwick", "Renwick"})
+
+    assert result.exit_code == 0
+    assert payload["backends"] == ["stub-a", "stub-b"]
+    assert surname["votes"] == {"Fenwick": 1, "Renwick": 1}
+    assert surname["agreement"] == 0.5
+    assert "already covers" in output(result)
+
+
+def test_eval_takes_the_target_it_is_judged_against(tmp_path):
+    dataset = tmp_path / "dataset"
+    dataset.mkdir()
+    (dataset / "alto-line.jpg").write_bytes((PAGES / "journal-p001.jpg").read_bytes())
+    (dataset / "alto-line.xml").write_text(
+        (PAGES.parent / "groundtruth" / "alto-line.xml").read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
+    truth = "Buried this day John Fenwick of the parish\nof Saint Mary, aged three score and ten"
+    wrong = truth.replace("Fenwick", "Renwick")
+    for transcript in transcripts(("stub-a", truth), ("stub-b", wrong), ("stub-c", truth)):
+        cache_transcript(transcript, "alto-line", dataset / ".manyhands")
+
+    lenient = invoke("eval", dataset, "--backends", STUBS, "--target-flag", "0.5")
+    strict = invoke("eval", dataset, "--backends", STUBS, "--target-flag", "0.01")
+
+    assert "capture >= 70%, flag rate < 50% [met]" in output(lenient)
+    assert "capture >= 70%, flag rate < 1% [not met]" in output(strict)
+
+
+def test_eval_warns_when_the_ground_truth_names_another_page(tmp_path):
+    dataset = tmp_path / "dataset"
+    dataset.mkdir()
+    (dataset / "elsewhere.jpg").write_bytes((PAGES / "journal-p001.jpg").read_bytes())
+    (dataset / "elsewhere.xml").write_text(
+        (PAGES.parent / "groundtruth" / "alto-line.xml").read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
+    truth = "Buried this day John Fenwick of the parish"
+    for transcript in transcripts(("stub-a", truth), ("stub-b", truth), ("stub-c", truth)):
+        cache_transcript(transcript, "elsewhere", dataset / ".manyhands")
+
+    result = invoke("eval", dataset, "--backends", STUBS)
+
+    assert result.exit_code == 0
+    assert "warning: elsewhere.jpg is paired with ground truth that names" in output(result)
+
