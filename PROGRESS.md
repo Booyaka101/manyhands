@@ -1,8 +1,9 @@
 # PROGRESS
 
-Status: v1.0.0, released on GitHub at https://github.com/Booyaka101/manyhands, tagged `v1.0.0`
-with the wheel and sdist attached. Not on PyPI. That upload is the owner's call, because a
-version number published there can never be withdrawn or reused.
+Status: v1.0.0, published. https://pypi.org/project/manyhands/ and
+https://github.com/Booyaka101/manyhands, tagged `v1.0.0` with the wheel and sdist attached
+to the release. `pip install manyhands` works. Version 1.0.0 on PyPI can never be withdrawn
+or reused, so anything wrong with it now costs a version number.
 
 ## Verified working
 
@@ -12,6 +13,11 @@ Every claim here was run, not reasoned about.
   247 tests, and were each run by hand on real input.
 - `pytest -q` → 247 passed. `ruff check .` → clean. difflib clone check at 50%: src 105
   functions, 0 pairs; tests 162 functions, 0 pairs.
+- `pip install manyhands` from PyPI into a clean 3.12 venv, then the whole CLI driven over a
+  folder outside the repo: `run` flagged 320 of 410 slots, which is the acceptance number,
+  `--json` wrote the folder summary, `confirm --slot 0 --reading Samedi` wrote the glossary,
+  and the re-run came back with `"confirmed": true` on that slot. Published sha256s match the
+  locally built files.
 - Real ensemble run, no cache, `tests/data/pages` with the default five: 12:16:08 to 12:44:15,
   340 of 427 slots flagged. Logged in `runs/demo-rerun.log`.
 - Eval on two HTR-United datasets with the default five. Célestine diary, 4 pages: capture
@@ -157,11 +163,13 @@ page is summarised, so the HTML index and the JSON cannot drift the way finding 
 
 ## Single best first distribution step
 
-PyPI, then one post. The GitHub release carries the wheel and sdist, but `pip install
-manyhands` still fails, and every other route needs an install command that works. Publish
-`dist/` with `twine upload`. Install twine into a throwaway venv, not this project's: it wants
-`rich>=14.3.3` and churro-ocr pins `rich<14`, so installing it here breaks the runtime. Then one write-up in r/LocalLLaMA that leads
-with the measured numbers including the bad ones: 48.0% capture on typescript, an 82% flag rate
-on cursive, and dots.ocr contributing nothing on a 24 GB card. That audience has the GPUs to
-reproduce it and no patience for a launch post that quotes only the 79.3%. Read 10-20 recent
-posts there first and match the register, and nothing gets posted without the owner's go.
+Done: PyPI is live, so `pip install manyhands` works and every other route has something to
+point at. Both files match the tagged build, sha256 `ee2f3ddd` and `af185a8c`. Note for any
+future upload: install twine into a throwaway venv, not this project's, because it wants
+`rich>=14.3.3` and churro-ocr pins `rich<14`.
+
+What is left is one post. One write-up in r/LocalLLaMA that leads with the measured numbers,
+including the bad ones: 48.0% capture on typescript, an 82% flag rate on cursive, and
+dots.ocr contributing nothing on a 24 GB card. That audience has the GPUs to reproduce it and
+no patience for a launch post that quotes only the 79.3%. Read 10-20 recent posts there first
+and match the register, and nothing gets posted without the owner's go.

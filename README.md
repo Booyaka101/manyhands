@@ -513,10 +513,10 @@ receive right now, and the ones that hold up go in this README.
 here runs and is covered by tests. What is thin is the evidence: eight scored pages from two
 documents, one hand each, on one GPU. Nothing here has met a hand it was not developed against.
 
-Distribution plan, such as it is. PyPI first, because every other step needs an install command
-that works. Then one write-up in r/LocalLLaMA led with the numbers above, the 48.0% capture on
-typescript included, since a post that only quotes 79.3% would be the exact overclaim this tool
-exists to argue against.
+It is on PyPI and tagged on GitHub, because every other step needs an install command that
+works. What is left is one write-up in r/LocalLLaMA led with the numbers above, the 48.0%
+capture on typescript included, since a post that only quotes 79.3% would be the exact
+overclaim this tool exists to argue against.
 
 ## Non-goals
 
