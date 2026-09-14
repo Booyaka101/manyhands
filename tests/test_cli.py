@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -29,11 +30,16 @@ def invoke(*args, **kwargs):
 #: terminal width, which splits phrases a test is looking for when tmp_path is long.
 BOX_ART = str.maketrans("", "", "│╭╮╰╯─")
 
+#: On a CI runner rich decides it has colour, so every panel border also carries an SGR
+#: pair. Stripping the box art alone leaves those between the words and the phrase never
+#: matches.
+ANSI = re.compile(r"\x1b\[[0-9;]*m")
+
 
 def output(result) -> str:
-    """Everything the command printed, unwrapped, whichever stream it chose."""
+    """Everything the command printed, unwrapped and uncoloured, whichever stream it chose."""
     printed = result.output + (result.stderr if result.stderr_bytes else "")
-    return " ".join(printed.translate(BOX_ART).split())
+    return " ".join(ANSI.sub("", printed).translate(BOX_ART).split())
 
 
 @pytest.fixture
