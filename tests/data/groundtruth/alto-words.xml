@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<alto xmlns="http://www.loc.gov/standards/alto/ns-v4#">
+  <Description>
+    <MeasurementUnit>pixel</MeasurementUnit>
+    <sourceImageInformation>
+      <fileName>register-p015.tif</fileName>
+    </sourceImageInformation>
+  </Description>
+  <Layout>
+    <Page WIDTH="1600" HEIGHT="2200" PHYSICAL_IMG_NR="15" ID="P15">
+      <PrintSpace HPOS="0" VPOS="0" WIDTH="1600" HEIGHT="2200">
+        <TextBlock HPOS="120" VPOS="200" WIDTH="1360" HEIGHT="300" ID="B1">
+          <TextLine ID="L1" HPOS="130" VPOS="220" WIDTH="900" HEIGHT="70">
+            <String CONTENT="Buried" HPOS="130" VPOS="220" WIDTH="200" HEIGHT="70"/>
+            <SP WIDTH="20"/>
+            <String CONTENT="this" HPOS="350" VPOS="220" WIDTH="120" HEIGHT="70"/>
+            <SP WIDTH="20"/>
+            <String CONTENT="day" HPOS="490" VPOS="220" WIDTH="130" HEIGHT="70"/>
+            <SP WIDTH="20"/>
+            <String CONTENT="John" HPOS="640" VPOS="220" WIDTH="150" HEIGHT="70"/>
+            <SP WIDTH="20"/>
+            <String CONTENT="Fenwick" HPOS="810" VPOS="220" WIDTH="220" HEIGHT="70"/>
+          </TextLine>
+          <TextLine ID="L2" HPOS="130" VPOS="320" WIDTH="600" HEIGHT="70">
+            <String CONTENT="of the pa" HPOS="130" VPOS="320" WIDTH="300" HEIGHT="70"/>
+            <HYP CONTENT="-"/>
+          </TextLine>
+          <TextLine ID="L3" HPOS="130" VPOS="420" WIDTH="400" HEIGHT="70">
+            <String CONTENT="rish" HPOS="130" VPOS="420" WIDTH="150" HEIGHT="70"/>
+          </TextLine>
+        </TextBlock>
+      </PrintSpace>
+    </Page>
+  </Layout>
+</alto>

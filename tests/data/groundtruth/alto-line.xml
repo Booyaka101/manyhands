@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<alto xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xmlns="http://www.loc.gov/standards/alto/ns-v4#"
+      xsi:schemaLocation="http://www.loc.gov/standards/alto/ns-v4# http://www.loc.gov/standards/alto/v4/alto-4-2.xsd">
+  <Description>
+    <MeasurementUnit>pixel</MeasurementUnit>
+    <sourceImageInformation>
+      <fileName>register-p014.jpg</fileName>
+    </sourceImageInformation>
+  </Description>
+  <Layout>
+    <Page WIDTH="1600" HEIGHT="2200" PHYSICAL_IMG_NR="14" ID="eSc_dummypage_">
+      <PrintSpace HPOS="0" VPOS="0" WIDTH="1600" HEIGHT="2200">
+        <TextBlock HPOS="120" VPOS="200" WIDTH="1360" HEIGHT="400" ID="eSc_textblock_1">
+          <TextLine ID="eSc_line_1" BASELINE="130 280 1470 280" HPOS="130" VPOS="220" WIDTH="1340" HEIGHT="70">
+            <String CONTENT="Buried this day John Fenwick of the parish" HPOS="130" VPOS="220" WIDTH="1340" HEIGHT="70"></String>
+          </TextLine>
+          <TextLine ID="eSc_line_2" BASELINE="130 380 1470 380" HPOS="130" VPOS="320" WIDTH="1340" HEIGHT="70">
+            <String CONTENT="of Saint Mary, aged three score and ten" HPOS="130" VPOS="320" WIDTH="1340" HEIGHT="70"></String>
+          </TextLine>
+          <TextLine ID="eSc_line_3" BASELINE="130 480 900 480" HPOS="130" VPOS="420" WIDTH="770" HEIGHT="70">
+            <String CONTENT="" HPOS="130" VPOS="420" WIDTH="770" HEIGHT="70"></String>
+          </TextLine>
+        </TextBlock>
+      </PrintSpace>
+    </Page>
+  </Layout>
+</alto>

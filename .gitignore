@@ -1,0 +1,23 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.phase0/
+# Generated report folders. tests/data/pages/.manyhands holds committed fixtures,
+# so only the repo-root workspace is ignored.
+/.manyhands/
+manyhands-out/
+# My own full-ensemble caches land next to the fixtures. Only the stubs are committed.
+tests/data/pages/.manyhands/*
+!tests/data/pages/.manyhands/transcripts/
+tests/data/pages/.manyhands/transcripts/*
+!tests/data/pages/.manyhands/transcripts/stub-*
+# Scratch folder for my own full-ensemble runs; the numbers land in the README.
+/runs/
+*.swp
+.DS_Store

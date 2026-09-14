@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TEI xmlns="http://www.tei-c.org/ns/1.0">
+  <teiHeader>
+    <fileDesc>
+      <titleStmt><title>A transcription manyhands eval cannot score</title></titleStmt>
+    </fileDesc>
+  </teiHeader>
+  <text>
+    <body>
+      <p>Buried this day John Fenwick of the parish</p>
+    </body>
+  </text>
+</TEI>

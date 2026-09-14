@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PcGts xmlns="http://schema.primaresearch.org/PAGE/gts/pagecontent/2013-07-15"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://schema.primaresearch.org/PAGE/gts/pagecontent/2013-07-15 http://schema.primaresearch.org/PAGE/gts/pagecontent/2013-07-15/pagecontent.xsd">
+  <Metadata>
+    <Creator>manyhands test fixture</Creator>
+    <Created>2026-09-14T00:00:00</Created>
+    <LastChange>2026-09-14T00:00:00</LastChange>
+  </Metadata>
+  <Page imageFilename="register-p016.png" imageWidth="1600" imageHeight="2200">
+    <TextRegion id="r1" type="paragraph">
+      <Coords points="120,200 1480,200 1480,600 120,600"/>
+      <TextLine id="r1l1">
+        <Coords points="130,220 1470,220 1470,290 130,290"/>
+        <Baseline points="130,280 1470,280"/>
+        <TextEquiv index="0">
+          <Unicode>Buried this day John Fenwick of the parish</Unicode>
+        </TextEquiv>
+      </TextLine>
+      <TextLine id="r1l2">
+        <Coords points="130,320 1470,320 1470,390 130,390"/>
+        <Baseline points="130,380 1470,380"/>
+        <TextEquiv index="0">
+          <Unicode>of Saint Mary, aged three score and ten</Unicode>
+        </TextEquiv>
+      </TextLine>
+      <TextLine id="r1l3">
+        <Coords points="130,420 900,420 900,490 130,490"/>
+        <TextEquiv index="0">
+          <Unicode></Unicode>
+        </TextEquiv>
+      </TextLine>
+      <TextEquiv>
+        <Unicode>Buried this day John Fenwick of the parish
+of Saint Mary, aged three score and ten</Unicode>
+      </TextEquiv>
+    </TextRegion>
+  </Page>
+</PcGts>

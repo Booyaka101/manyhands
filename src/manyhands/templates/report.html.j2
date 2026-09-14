@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>manyhands · {{ page }}</title>
+<style>
+  :root {
+    --ink: #1b1b1b; --paper: #fbfaf7; --rule: #ddd8cc;
+    --red: #f3b6b0; --amber: #f6ddac; --pale: #e4e9d8;
+    --red-edge: #b4453a; --amber-edge: #b1801d; --pale-edge: #7d8b5e;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink);
+         font: 16px/1.6 Georgia, "Iowan Old Style", serif; }
+  header, main, footer { max-width: 1180px; margin: 0 auto; padding: 0 24px; }
+  header { padding-top: 28px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .sub { font: 13px/1.5 ui-monospace, Menlo, Consolas, monospace; color: #665f52; }
+  .stats { display: flex; flex-wrap: wrap; gap: 18px; margin: 18px 0 6px;
+           font: 13px/1.4 ui-monospace, Menlo, Consolas, monospace; }
+  .stats b { font-size: 20px; display: block; font-weight: 600; }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; margin: 10px 0 22px;
+            font: 12px/1.4 ui-monospace, Menlo, Consolas, monospace; }
+  .legend span { padding: 2px 8px; border-radius: 3px; }
+  .legend .keys { color: #665f52; padding-left: 0; }
+  .nav { display: flex; gap: 16px; margin-bottom: 14px;
+         font: 12px/1.4 ui-monospace, Menlo, Consolas, monospace; }
+  .nav a { color: #665f52; }
+  .layout { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 28px; align-items: start; }
+  @media (max-width: 900px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+  .text { background: #fff; border: 1px solid var(--rule); border-radius: 4px; padding: 22px 24px; }
+  .ln { display: block; padding: 1px 0; }
+  .ln::before { content: attr(data-n); display: inline-block; width: 3em; margin-right: 10px;
+                text-align: right; color: #b4ad9d;
+                font: 11px/1.6 ui-monospace, Menlo, Consolas, monospace; }
+  .w { border-radius: 3px; padding: 0 1px; }
+  .w.red { background: var(--red); box-shadow: inset 0 -2px 0 var(--red-edge); cursor: pointer; }
+  .w.amber { background: var(--amber); box-shadow: inset 0 -2px 0 var(--amber-edge); cursor: pointer; }
+  .w.pale { background: var(--pale); box-shadow: inset 0 -2px 0 var(--pale-edge); cursor: pointer; }
+  .w.sel { outline: 2px solid #1b1b1b; outline-offset: 1px; }
+  .w.empty { color: #a49c8c; }
+  .w.confirmed::after { content: "✓"; font-size: 10px; vertical-align: super; color: #4c6b32; }
+  aside { position: sticky; top: 18px; background: #fff; border: 1px solid var(--rule);
+          border-radius: 4px; padding: 18px; }
+  aside h2 { font-size: 14px; margin: 0 0 12px; text-transform: uppercase; letter-spacing: .08em;
+             font-family: ui-monospace, Menlo, Consolas, monospace; color: #665f52; }
+  #panel-title { text-transform: none; letter-spacing: 0; color: var(--ink);
+                 font: 17px/1.4 Georgia, serif; }
+  #panel-title .meta { font: 11px/1.6 ui-monospace, Menlo, Consolas, monospace; color: #665f52;
+                       display: block; text-transform: uppercase; letter-spacing: .08em; }
+  /* The crop is shown at its own pixel size and scrolled to the word: squeezing a
+     1800px line into a 340px panel makes the handwriting unreadable. */
+  #crop-wrap { position: relative; overflow: auto; border: 1px solid var(--rule);
+               border-radius: 3px; background: #f2efe8; margin-bottom: 14px; max-height: 240px; }
+  #crop-wrap img { display: block; max-width: none; }
+  #crop-box { position: absolute; border: 2px solid var(--red-edge);
+              background: rgba(180, 69, 58, .14); pointer-events: none; }
+  table { width: 100%; border-collapse: collapse;
+          font: 13px/1.5 ui-monospace, Menlo, Consolas, monospace; }
+  th, td { text-align: left; padding: 5px 6px; border-bottom: 1px solid #eee8dc; vertical-align: top; }
+  th { color: #665f52; font-weight: 600; }
+  td.reading { font: 15px/1.4 Georgia, serif; }
+  td.none { color: #b4ad9d; font-style: italic; }
+  tr.win td.reading { font-weight: 700; }
+  footer { margin: 36px 0 60px; font-size: 13px; color: #5a5346; }
+  footer h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em;
+              font-family: ui-monospace, Menlo, Consolas, monospace; }
+  footer ul { padding-left: 18px; }
+  .warn { border-left: 3px solid var(--amber-edge); padding: 8px 12px; background: #fdf6e4;
+          margin: 10px 0; }
+  .blank { border-left: 3px solid var(--pale-edge); padding: 12px 14px; background: #f2f5ea; }
+</style>
+</head>
+<body>
+<header>
+  <nav class="nav">
+    {% if previous %}<a href="../{{ previous }}/report.html">&larr; {{ previous }}</a>{% endif %}
+    <a href="../index.html">all pages</a>
+    {% if following %}<a href="../{{ following }}/report.html">{{ following }} &rarr;</a>{% endif %}
+  </nav>
+  <h1>{{ page }}</h1>
+  <div class="sub">{{ summary.voters }} backend{{ "" if summary.voters == 1 else "s" }} voted &middot;
+    {{ backends|join(" · ") }}</div>
+  <div class="stats">
+    <div><b>{{ summary.total }}</b>slots</div>
+    <div><b>{{ summary.flagged }}</b>disagreed</div>
+    <div><b>{{ "%.1f"|format(summary.flag_rate * 100) }}%</b>flag rate</div>
+    <div><b>{{ summary.bands.red }}</b>red</div>
+    <div><b>{{ summary.bands.amber }}</b>amber</div>
+    <div><b>{{ summary.bands.pale }}</b>pale</div>
+  </div>
+  <div class="legend">
+    <span class="w red">agreement &lt; 0.5</span>
+    <span class="w amber">0.5 to 0.8</span>
+    <span class="w pale">above 0.8, below 1.0</span>
+    <span>unmarked = every backend agreed</span>
+    {% if summary.confirmed %}<span class="w confirmed">you confirmed this reading</span>{% endif %}
+    <span class="keys">n / p step through the disagreements</span>
+  </div>
+</header>
+
+<main>
+{% if blank %}
+  <p class="blank">Every backend read this page as empty, so manyhands emitted an empty
+  consensus rather than whatever one model might have invented. The page is flagged
+  <code>blank</code> in <code>agreement.json</code>.</p>
+{% else %}
+  <div class="layout">
+    <div class="text">
+      {% for entry in lines %}
+      <span class="ln" data-n="{{ entry.line + 1 }}">
+        {%- for slot in entry.slots %}
+        <span class="w {{ slot.band }}{{ ' empty' if slot.empty }}{{ ' confirmed' if slot.confirmed }}"
+              {% if slot.band != 'ok' %}data-slot="{{ slot.i }}" tabindex="0" role="button"
+              title="agreement {{ '%.2f'|format(slot.agreement) }}"{% endif %}>{{ slot.text }}</span>
+        {%- endfor %}
+      </span>
+      {% endfor %}
+    </div>
+    <aside>
+      <h2 id="panel-title">Pick a highlighted word</h2>
+      <div id="panel-empty">Every highlighted word is one the backends read differently.
+        Click one to see the page image and what each model returned.</div>
+      <div id="panel" hidden>
+        <div id="crop-wrap"><img id="crop" alt="Cropped region of the page"><div id="crop-box"></div></div>
+        <p id="no-crop" class="warn" hidden>No crop for this word. manyhands could not find its line on the page image.</p>
+        <table>
+          <thead><tr><th>backend</th><th>reading</th></tr></thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+    </aside>
+  </div>
+{% endif %}
+</main>
+
+<footer>
+  {% if dropped %}
+  <h2>Backends kept out of this page's vote</h2>
+  {% for name, reason in dropped.items() %}
+  <div class="warn"><b>{{ name }}</b> · {{ reason }}</div>
+  {% endfor %}
+  {% endif %}
+  {% if notes %}
+  <h2>Notes</h2>
+  <ul>
+    {% for name, items in notes.items() %}{% for note in items %}
+    <li><b>{{ name }}</b> · {{ note }}</li>
+    {% endfor %}{% endfor %}
+  </ul>
+  {% endif %}
+  <h2>Timings</h2>
+  <ul>
+    {% for name, seconds in timings.items() %}
+    <li>{{ name }} · {{ seconds }}s</li>
+    {% endfor %}
+  </ul>
+  <h2>Limits</h2>
+  <ul>
+    <li>Crops are located by manyhands' own line-band detection, because the backends
+      return text and not coordinates. The vertical band is measured; the position along
+      the line is proportional to the characters before it, so treat the box as a pointer
+      rather than a measurement.</li>
+    <li>Multi-column and table pages are aligned per detected line block. v1 does not
+      reconstruct a cross-column reading order.</li>
+    <li>Agreement is agreement between models, not accuracy. Models that share a base
+      model can be wrong together.</li>
+  </ul>
+  <p>manyhands {{ version }} · generated {{ generated }}</p>
+</footer>
+
+<script id="slot-data" type="application/json">{{ slot_data|script_json }}</script>
+<script id="crop-data" type="application/json">{{ crops|script_json }}</script>
+<script>
+(function () {
+  const slots = JSON.parse(document.getElementById('slot-data').textContent);
+  const crops = JSON.parse(document.getElementById('crop-data').textContent);
+  const panel = document.getElementById('panel');
+  const empty = document.getElementById('panel-empty');
+  const title = document.getElementById('panel-title');
+  const rows = document.getElementById('rows');
+  const crop = document.getElementById('crop');
+  const box = document.getElementById('crop-box');
+  const wrap = document.getElementById('crop-wrap');
+  if (!panel) return;
+  let selected = null;
+
+  function show(id, node) {
+    const slot = slots[id];
+    if (!slot) return;
+    if (selected) selected.classList.remove('sel');
+    selected = node;
+    node.classList.add('sel');
+
+    title.textContent = slot.consensus || '(read as nothing)';
+    const meta = document.createElement('span');
+    meta.className = 'meta';
+    meta.textContent = 'agreement ' + slot.agreement.toFixed(2) +
+      (slot.contested ? ' · contested' : '') + (slot.confirmed ? ' · confirmed' : '');
+    title.appendChild(meta);
+    rows.textContent = '';
+    slot.readings.forEach(function (pair) {
+      const tr = document.createElement('tr');
+      if (pair[2]) tr.className = 'win';
+      const backend = document.createElement('td');
+      backend.textContent = pair[0];
+      const reading = document.createElement('td');
+      reading.className = pair[1] === null ? 'reading none' : 'reading';
+      reading.textContent = pair[1] === null ? 'read nothing here' : pair[1];
+      tr.appendChild(backend); tr.appendChild(reading); rows.appendChild(tr);
+    });
+
+    const image = slot.bbox ? crops[String(slot.bbox[1])] : null;
+    if (image && slot.bbox) {
+      crop.src = image.src;
+      wrap.hidden = false;
+      const place = function () {
+        const s = image.scale;
+        const left = (slot.bbox[0] - image.origin[0]) * s;
+        const width = slot.bbox[2] * s;
+        box.style.left = left + 'px';
+        box.style.top = ((slot.bbox[1] - image.origin[1]) * s) + 'px';
+        box.style.width = width + 'px';
+        box.style.height = (slot.bbox[3] * s) + 'px';
+        box.hidden = false;
+        wrap.scrollLeft = left + width / 2 - wrap.clientWidth / 2;
+      };
+      if (crop.complete) place(); else crop.onload = place;
+      window.onresize = place;
+    } else {
+      wrap.hidden = true;
+      box.hidden = true;
+    }
+    document.getElementById('no-crop').hidden = Boolean(image);
+    empty.hidden = true;
+    panel.hidden = false;
+  }
+
+  const flagged = Array.prototype.slice.call(document.querySelectorAll('[data-slot]'));
+  flagged.forEach(function (node) {
+    node.addEventListener('click', function () { show(node.dataset.slot, node); });
+    node.addEventListener('keydown', function (event) {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        show(node.dataset.slot, node);
+      }
+    });
+  });
+
+  function step(by) {
+    if (!flagged.length) return;
+    const at = selected ? flagged.indexOf(selected) : (by > 0 ? -1 : 0);
+    const node = flagged[(at + by + flagged.length) % flagged.length];
+    show(node.dataset.slot, node);
+    node.scrollIntoView({ block: 'center' });
+    node.focus({ preventScroll: true });
+  }
+
+  document.addEventListener('keydown', function (event) {
+    if (event.ctrlKey || event.metaKey || event.altKey) return;
+    if (event.key === 'n') step(1);
+    else if (event.key === 'p') step(-1);
+  });
+})();
+</script>
+</body>
+</html>

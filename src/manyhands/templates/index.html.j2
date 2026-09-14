@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>manyhands · {{ rows|length }} page{{ "" if rows|length == 1 else "s" }}</title>
+<style>
+  body { margin: 0; background: #fbfaf7; color: #1b1b1b;
+         font: 16px/1.6 Georgia, "Iowan Old Style", serif; }
+  main { max-width: 920px; margin: 0 auto; padding: 32px 24px 70px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .sub { font: 13px/1.5 ui-monospace, Menlo, Consolas, monospace; color: #665f52; margin-bottom: 24px; }
+  table { width: 100%; border-collapse: collapse; font: 14px/1.5 ui-monospace, Menlo, Consolas, monospace; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #e6e0d3; }
+  th { color: #665f52; }
+  td.num { text-align: right; }
+  a { color: #1b1b1b; }
+  .flag { font-weight: 700; }
+  .tag { display: inline-block; padding: 1px 7px; border-radius: 3px; background: #f2f5ea;
+         color: #4c6b32; font-size: 12px; }
+  .tag.warn { background: #fdf6e4; color: #8a6510; }
+  footer { color: #5a5346; font-size: 13px; margin-top: 30px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>{{ rows|length }} page{{ "" if rows|length == 1 else "s" }} transcribed</h1>
+  <div class="sub">{{ total_flagged }} of {{ total_slots }} slots disagreed
+    ({{ "%.1f"|format(flag_rate * 100) }}% flag rate)</div>
+  <table>
+    <thead><tr><th>page</th><th class="num">slots</th><th class="num">flagged</th>
+      <th class="num">rate</th><th></th></tr></thead>
+    <tbody>
+    {% for row in rows %}
+      <tr>
+        <td><a href="{{ row.stem }}/report.html">{{ row.page }}</a></td>
+        <td class="num">{{ row.slots }}</td>
+        <td class="num flag">{{ row.flagged }}</td>
+        <td class="num">{{ "%.1f"|format(row.flag_rate * 100) }}%</td>
+        <td>
+          {% if row.blank %}<span class="tag">blank</span>{% endif %}
+          {% if row.dropped %}<span class="tag warn">{{ row.dropped|length }} backend{{ "" if row.dropped|length == 1 else "s" }} dropped</span>{% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <footer>manyhands {{ version }} · generated {{ generated }}</footer>
+</main>
+</body>
+</html>
